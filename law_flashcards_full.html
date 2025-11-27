@@ -1,0 +1,416 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Law Flashcards</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    background: #f4f4f4;
+    color: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: background 0.3s, color 0.3s;
+}
+body.dark { background: #1e1e1e; color: #eee; }
+#container { max-width: 700px; width: 95%; margin-top: 20px; }
+select, button, .toggle { font-size: 18px; }
+select { width: 100%; padding: 12px; margin-bottom: 20px; }
+.card {
+    background: white; padding: 30px; border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    min-height: 200px; display: flex; justify-content: center;
+    align-items: center; font-size: 22px; text-align: center;
+    cursor: pointer; transition: background 0.3s, color 0.3s;
+}
+body.dark .card { background: #333; color: #eee; box-shadow: 0 4px 10px rgba(255,255,255,0.1); }
+nav { margin-top: 20px; display: flex; justify-content: space-between; }
+button { padding: 14px 22px; border: none; border-radius: 8px; cursor: pointer; }
+#prev, #next { background: #007aff; color: white; }
+#flip { background: #333; color: white; width: 40%; }
+.toggle { margin-top: 15px; padding: 10px; width: 100%; background: #555; color: white; border-radius: 8px; cursor: pointer; }
+.scoreRow { display: flex; justify-content: space-between; margin-top: 15px; }
+.scoreBtn { width: 48%; padding: 14px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; }
+.correct { background: #2ecc71; color: white; }
+.wrong { background: #e74c3c; color: white; }
+#scoreDisplay { margin-top: 15px; font-size: 20px; font-weight: bold; }
+ul { text-align: left; }
+</style>
+</head>
+<body>
+<div id="container">
+    <select id="deckSelect">
+        <option value="civpro">Civil Procedure</option>
+        <option value="torts">Torts – Negligence</option>
+    </select>
+    <button class="toggle" id="darkToggle">Toggle Dark Mode</button>
+    <button class="toggle" id="shuffleToggle">Shuffle Mode: OFF</button>
+    <button class="toggle" id="wrongOnlyToggle">Review Wrong Only: OFF</button>
+    <div class="card" id="card">Tap to flip</div>
+    <nav>
+        <button id="prev">Prev</button>
+        <button id="flip">Flip</button>
+        <button id="next">Next</button>
+    </nav>
+    <div class="scoreRow">
+        <button class="scoreBtn correct" id="correctBtn">Got It Right</button>
+        <button class="scoreBtn wrong" id="wrongBtn">Got It Wrong</button>
+    </div>
+    <div id="scoreDisplay">Score: 0 correct / 0 total</div>
+</div>
+<script>
+// Datasets
+const civpro = [
+        {front: "Band's Refuse", back: ["Trash Company; Statute about who can get contracts \u0097 case was ridiculously long, expensive, and judge called 27 witnesses (24 showed up) - both parties called 5", "Preparation prejudice RE: judge's actions. Intervention can be a jointer. Judicial discretion is limited; main focus of courts is speedy and efficient trial"]},
+        {front: "Band's Refuse", back: ["R16(e) - judge sets deadline for all pretrial amendments due \u0097 exceptions only for \"manifest injustice\""]},
+        {front: "Zuk v EPPI", back: ["Copyright case; imcompetent lawyer; Safe Harbor clause ran out", "R11 sanctions used; did not make amendments in the 30 days after notified (did not use safe harbor time)"]},
+        {front: "Kothe v Smith", back: ["judge over involved himself said if they go to trial and later settled for 20-30k, they'd be sanctioned - so they were (only Smith).", "R16 (f) - sanctions against bad faith pre-trial conferences"]},
+        {front: "Shedden v WalMart", back: ["Bad faith refusal to settle \u0097 did not send someone with authority to the settlement discussions and just said \"we don't settle\"", "R16 (f) - sanctions against bad faith pre-trial conferences"]},
+        {front: "Gillespie v Goodyear Serv Stores", back: ["Woman attacked. Insufficient complaint, didn't include cause of action - demurrers sustained. Needed facts; not conclusions", "10 (b) - claims / def in numbered paragraphs                   8(a)2 - valid claim, written in plain and short language", "Demurrer: - competency of evid. - form of the issues - charge of the court"]},
+        {front: "Chavez v Ford Motors", back: ["Dism. W/o prejudice \u0097 Leave to amend - not granted", "Court has no duty to grant leave to amend if dismissed w/out prej."]},
+        {front: "Parents for Privacy v Barr", back: ["Dism. W/o prejudice \u0097 Leave to amend - granted", "Court will grant leave to amend if dismissed w/out prejudice"]},
+        {front: "Conley v Gibson", back: ["Union railroad - Race-based prejudice claim", "Complaint should not be dism. For failure to state a claim UNLESS it appears beyond a doubt P. Cannot prove anything to support claim that he's entitled to relief", "**supreme ct retired Conley bc of costs of discovery"]},
+        {front: "US v Board of Harbor Commissioners", back: ["Oil in the harbor \u0097 didn't know who did it", "12(e) is ONLY for unintelligibility NOT for lacking details; can make multiple motions at the same time - affirmative defense seeking more info r8(c)"]},
+        {front: "Arlington", back: ["Police brutality allegations; video cam proved otherwise", "12(d) - inclusion by inference if evidence central to claim sent along with motion to dismiss. Video exhibits that \"blatantly contradict\" allegations are admitted \u0097 considered the \"futility\" argument in allowing plaintiff to amend complaint", "If vid is referenced in the plea, can attach it to the response 10(c)"]},
+        {front: "Trump v Clinton", back: ["193 pg complaint; 819 #ed paragraphs - dismissed over length", "8(a)2; 10(b) - neither short nor plain"]},
+        {front: "Mendez v draham", back: ["ridiculous complaint; risk of malpractice to review the complaint's thousand-odd paragraphs", "8(a)2 - short and plain statement needed for claim"]},
+        {front: "Ashcroft v Iqbal", back: ["Prior FBI director suing claimant on previous case \u0097 petitioners saying they can't be held for unconstitutional conduct because of immunity for official actions", "R. 8(a)2 - plausibility interpretation about proving things \u0097 evidence-o-meter (has to be beyond 'possible' and at 'PLAUSIBLE')", "heightened pleading standards; mere knowledge of subord. Behavior is not enough \u0097 prove that WHOLE operation was made for discrimination purposes"]},
+        {front: "Twombly", back: ["Telecoms giant broken up (baby bells) accused of being cohoots to keep prices down and stop competitors from entering the market ; D responded by including full magazine art that had quote partially taken by P.", "R. 8(a)2 - plausibility interpretation about proving things \u0097 evidence-o-meter (has to be beyond 'possible' at PLAUSIBLE) (EST'D IDEA).                                                           12(d) - incorporation by reference to a 12(b)6 motion - must be treated as motion for summary judgment", "heightened pleading standards"]},
+        {front: "Ross v Alt Robins", back: ["Stock trading fraud \u0097 led to mass tort : eventually the Priv. Secs Litig. Ref. Act came after", "R9(b) - Claim denied for not being specific enough ; Malice intent can be general claims.  Assures D of fair notice; protects D from harm to reputation / goodwill"]},
+        {front: "Tellabs v Makor", back: ["Complaint need only allege facts an RP would infer D acted w/ intent", "r9(b) - base line of plea in complaint"]},
+        {front: "Pirelli v Walgreens", back: ["Alleged fraud over using generic drugs; D said it wasn't 'fraud' it was 'broad deception'", "r9(b) - covers fraud for more than securities; broad deception not included"]},
+        {front: "McDonalds", back: ["Alleged deception in marketing bc of health problems from food", "R9(b) - satisfied in this case for deception"]},
+        {front: "Swierkiewicz v Sorema", back: ["Alleged age and national origin discrimination (53;  replaced by someone who was 26 and had same nat'l origin as the president of the company)", "8(a)2 - short and plain; no heightened pleading req's complaint in an employment discrimination case does not need to include specific facts establishing a prima facie case"]},
+        {front: "Shepard Claims v William Darrah & Ass.", back: ["lawyer on holiday; secretary made wrong note on date \u0097 Motion to dismiss a default judgment", "r55(c) - set aside default judgment IF:                                  1) preparation prejudice? 2) D = meritorious defense? 3) d = Culpable conduct?  - if 1&2 met, 3 doesn't matter"]},
+        {front: "David v Crompton & Knowles", back: ["Machine injured someone; one company got acquired by another (company that made equip got acquired) - judge ruled not granting motion to amend the claim and add the correct D was prej. Bc statute of limitations had already run and D was already on notice", "r15(c) - grounds for relation back - prejudice to P if they couldn't amend bc statute of limit. Had run"]},
+        {front: "Costa Crociere", back: ["Woman injured on cruise; sues the wrong company - tries to relate back; D was already on notice bc they were a subsidiary", "R15(c)1(C) - relation back can be approved if D knew or should've known about the lawsuit"]},
+        {front: "Aquaslide", back: ["Injury on water slide; first said yes - then wanted to amend to deny.", "R15(b) can amend during trial for conformity to evidence (Judicial discretion)"]},
+        {front: "Jacobs v McCloskey", back: ["amendment allowed d to amend to deny ownership", "R15(a) - freely give leave to amend unless it prejudices the other side -  Ct will ask \"are you better or worse off if we allow the other party to amend?\""]},
+        {front: "McCormick v KopMann", back: ["Wrongful death; widow made two pleadings - 1) that other driver was negligent for driving over the line and 2) that dram shop was negligent for selling alcohol to husband", "R8(d)2 - you can make \"alternate pleadings\" - two things that contradict each other; just to see what sticks"]},
+        {front: "Bjorgling v Whitetail Resorts", back: ["Delay is not a reason to deny amendment", "R15(a)2 - amendment allowed freely - delay no reason to deny if no prejudice"]},
+        {front: "Husky Ventures Inc", back: ["16(b)3(A) - court should adopt a schedule"]},
+        {front: "Stallone v Time Inc", back: ["Sued wrong party with 1w to spare; failed 4m test of 90 days", "4m - must serve w/in 90 days of filing complaint"]},
+        {front: "Hickman v Taylor", back: ["Work product doctrine for lawyers \u0097 P did not have necessity or justification for request bc it could be recreated with available resources", "R26(a) + 26(b)1 - which requires broad disclosure does not apply to work-product doctrine; if requested work product doctrine under r34 , party can refuse and explain why", "Work Prod Doc"]},
+        {front: "Upjohn Co", back: ["Work Prod Doctrine", "was it - 1) in preparation for trial 2) done under the supervision of hired lawyer 2) done by someone hired only for the trial?", "Work Prod Doc"]},
+        {front: "Femmes v Intl Flav & Fragrances", back: ["P allowed to use facts from discovery for r9(b)", "r9(b) - satisfying P's authority to sue; can use facts from discovery"]},
+        {front: "Zavala v Walmart", back: ["P permitted discovery prior to filing amended complaint", "If pleading is more demanding - discovery can happen before amendment to the plea"]},
+        {front: "RE: Convergent technologies sec. Lit.", back: ["40k spent on discovery \u0097 court said \"violates spirit of rule 1 - just, speedy, inexpensive determination\" - depends on \"good faith and common sense of counsel\" when to answer \"contention interrogatories\". Had over 1,000 questions - some \"mindlessly generated\"", "R33: NEW cap on interrogatories: 25                                R26(b) + 26(g) - counsel must use common sense for when to respond to interrogatories;don't waste client's money"]},
+        {front: "IMDb v Becerra", back: ["Free speech claimed re: listing actresses' ages ; govt tried to find out if IMdb lobbied against legislation in Calif. making it illegal in CA \u0097 judge ruled discovery was improper", "1st amendment: Requests for discovery must be relevant to claim or defense ; 1st amendment cases (Free speech) are particularly imp't"]},
+        {front: "Hughes v 21st Cent Fox", back: ["Subpoenaed Ps prior partners in sex. Harassment claim ; motion to quash subpoenas granted", "\"Prejudice to P outweighs what little relevance it may bring\""]},
+        {front: "Capps v Dixon", back: ["Police brutality case - discovery requested about D's mental state and if govt knew about issues", "Govt entities not immune to providing discovery - discovery was directly relevant to facts in dispute"]},
+        {front: "Tomlinson v El Paso corp", back: ["Employer controlled pension records", "r34 request for production of discovery"]},
+        {front: "Re: auction house antitrust", back: ["Info from prior CEO - req'd to share info as agreed in termination agreement", "r34 request for production of discovery"]},
+        {front: "Brown v Walmart", back: ["R24(b) 2(B) - Boilerplate grounds for objecting to broad discovery = unacceptable"]},
+        {front: "Davis v Ross", back: ["Sought Ross net worth - said it's impt to know if D can pay", "R26(b)1 - discovery only relevant if it is about a disputed fact / fact of evidence"]},
+        {front: "Davis v Ross;                                                  Burning pajamas case (Kozlowski v sears)", back: ["R. 34 - requests for discovery - Proportionality of burden of discovery to relevance"]},
+        {front: "Burning PJs (K v Sears)", back: ["R34 - have to request with reasonable specificity what you want"]},
+        {front: "Coca Cola Case", back: ["Sought secret recipe in discovery; ct issued a protective order", "Can look outside FRCP for solutions"]},
+        {front: "NorCo Explosion (shell refinery)", back: ["Explosion altered the scene, so other side's experts didn't have access to the same site; thus - necessity for disclosure of other expert's discovery", "R26(b)4(D) - exceptional circumstances = can benefit from other side's discovery FOR Non-testifying experts"]},
+        {front: "Cine 42nd St", back: ["P wouldn't release discovery re: blueprints for movie theater (were incorrect) or how they calculated damages", "26(a) - must release how damages are calculated;  37(c)1 - sanctions"]},
+        {front: "Corley v Rosewood Care", back: ["bait and switch statements were not admissible to court - didn't use right rules", "27 - can get prelitigation deposition before lawsuit starts                                                                                            32(a)4 - can use deposition if witness unavailable"]},
+        {front: "Societe Internacionale", back: ["If attempt to comply is made thwarted by foreign law; protected", "R37 sanctions don't apply if compliance is out of party's control (foreign law)"]},
+        {front: "Univ. Health Grp", back: ["1) party's bad faith; 2) other party prejudiced? 3) warned abt failure to comply = dismissal 4) curing prep. Prej = less severe", "Don't rush to litigation-ending sanctions"]},
+        {front: "Hovey v Elliot", back: ["S. Ct said litigant has the right to have the case decided on the merits despite missing deadline", "Decisions for cases should be made on the merits when possible"]},
+        {front: "Pennoyer v Neff", back: ["Insufficient process; other party in different state and illiterate", "need to properly serve parties notice so they can raise objections to PJX"]},
+        {front: "Beacon Theaters v Westover", back: ["right to jury trial cannot be deprived unilaterally if other side has right; right to jury trial came up on the counterclaim - cross claim \u0097 declaratory judgment thrown out", "7th amendment - applies to rule of law trials (money); r38 / r39"]},
+        {front: "Curtis v Loether", back: ["Backpay is NOT compensatory damages; not a claim in law - can be considered equity claim", "Backpay/wages = equity; not Law"]},
+        {front: "Arnstein v Porter", back: ["Jury should decide if there's a weak link re: evidence on case", "Any evidence a reasonable jury could find in favor of plaintiff means it should be jury-decided for facts; JUDGE ALLOWED to say they don't believe evidence (in a way that leaves door open to interpret for jury)"]},
+        {front: "Dyer v McDougall", back: ["Defamation case ; disbelief evidence - counted for summary judgment", "Evidence must be substantiated. Everyone said it didn't happen"]},
+        {front: "Adickes", back: ["56(c)1 & 4 - affidavit is admissible if facts admissible to evidence; evidence must be produced if admissible"]},
+        {front: "Celotex", back: ["Affidavits not admissible ; only need to prove plaintiff has no proof ; argued affidavits were inadmissible bc they were hearsay", "Motion for summary judgment over lack of evidence ; shifts burden to pinpoint evidence that brings material into question"]},
+        {front: "Scott v Harris", back: ["High speed car chase; plaintiffs deposition + camera evidence -", "4th amendment - Cops can use deadly force if needed to preserve public safety"]},
+        {front: "Galloway v Us", back: ["Soldier claimed disability but got married;est's rule of credibility of evidence ; wife existence and not testifying = negative inference", "7th amendment - not absolute if the evidence is not credible ; R50 (a) - credibility of evidence - negative inference can make evidence inadmissible"]},
+        {front: "Lavender v Kern", back: ["Mailhook / railroad; even things that are only remotely possible should be admitted", "50(a) - court must consider all the evidence  Speculative evidence can be sent to jury ; judgment as a matter of law"]},
+        {front: "Lavender v Kern", back: ["Things like negligence is often jury's call"]},
+        {front: "Ahern v Scholz", back: ["Boston musical group \u0097 money over contracts", "R61 - harmless error: if evidence would substantially change the outcome ; harmful error made"]},
+        {front: "Mosley v GM", back: ["404 - don't allow propensity evidence                                       Claim preclusion - failing to add claim to a case means you can't add it later"]},
+        {front: "Blue Goose", back: ["Wife (executor of estate) wanted to open a new claim on accident w/ bus company", "Issue preclusion (estoppel by verdict)"]},
+        {front: "Grumman v Data General", back: ["Use it or lose it re: anti-trust claim", "13a - compulsory counterclaim ; 13(b) = cross-claim = have to use it at beginning or its lost"]},
+        {front: "Rinehart v Locke", back: ["first lawsuit resulted in a final judgment on the merits that was not appealed or specified as being \"without prejudice\"", "Claim preclusion ; 41(b) - could have appealed or sought to amend; instead case was decided on the merits"]},
+        {front: "Hardy v Johns-Manville Sales", back: ["Prior case was \"ambiguous\" - Borel case \u0097 and not binding; did not determine key facts in question bc it did not find all manufacturers should have known the product was dangerous (just inadequate warnings)", "Issue preclusion can fail if prior judgment was ambiguous and there's a q around the facts resolved"]},
+        {front: "Dimick v Schiedt", back: ["7th amendment question of what judge can do after jury finds in someone's favor \u0097 they can decrease the amount awarded, but not increase (prejudice to loser)", "After ruling: only Remittur allowed through judicial discretion (decreasing winnings), not Additur (increasing winnings)", "Additur v Remittur (only Remittur allowed)"]},
+        {front: "Whitlock v Jackson", back: ["Police arrested someone who was drunk; he refused to throw the whiskey bottle; cops killed him         - case dealt with issue of inconsistent interrogatories - ct used 49(b), but should have used 49(a)", "49a - special verdict - itemized, no bottom line                 49b - general verdict \"procedural opiate\" - only bottom line  Form of verdict", "Form of verdict - in this case, they could reconcile the diff's (used 49b, should have used 49a)"]},
+        {front: "Whitlock v Jackson", back: ["Causation - jury did not find proximate cause between injury & death (post-arrest injury)", "5th am. + 14th"]},
+        {front: "Summers v Tice", back: ["YOU ALREADY KNOW BC OF TORTS - quail hunting; shot in face by two people - not sure who ; needed a new type of law for jury instructions", "11 - if you have issues with jury instructions you must object to them to preserve the error for future appeal consideration"]},
+        {front: "People v Hutchinson", back: ["Marijuana charges \u0097 Crazy bailiff threatened to lock jury up over night and waved his gun \u0097 said problems will happen if they didn't come to a verdict", "R606(b) - outside influence on jury\u0097 JURY CAN impeach their own verdict"]},
+        {front: "Sopp v Smith", back: ["Car accident - juror went to site of accident", "r606(b) - outside information improperly brought  - jury impeach their own verdict allowed"]},
+        {front: "Bose Corp v Cons Union", back: ["negative review about product \u0097 First amendment exception if written with actual malice", "52a - state of mind is a finding of fact; not of law"]},
+        {front: "NYT v Sullivan", back: ["52a - findings of fact only reconsidered if there's a clear error"]},
+        {front: "Staats v Co of Sawyer", back: ["Free to proceed bc of claim preclusion; but case might be dead bc of issue preclusion", "Full faith & credit doctrine; Claim preclusion"]},
+        {front: "Whole Women's Health v Hellerstedt", back: ["case 1- challenges before law implemented; case 2- after implemented", "S Ct said two different issues bc law passing made it diff. Claims (claim preclusion exception)"]},
+        {front: "Insomnia v Morris", back: ["Smokers/ lung cancer/ diff time periods", "23(b)3 - not allowed to be joinders because of different brands, over different time periods \u0097 NOT SAME transaction or occurrence"]},
+        {front: "Horia v Nationwide credit collection", back: ["2 collections; 2 suits - said def could have broad release in settlement agreement", "Claim preclusion status = eligible for de novo review"]},
+        {front: "Taylor v sturgell", back: ["Antique planes - rebuilding; request for info denied based on assuming person was proxy", "Issue preclusion applied to non parties when: - non party agrees to be bound - substantial legal rel's exist (property, contracts, bailor/bailee, executor of will); someone assumed control over the litigation has same interests (trustee, guardian, fiduciary); relitigation by proxy or agent; special statutory schemes"]},
+        {front: "Parklane Hoisiery v Shore Co", back: ["Argued 7th amendment violated by they had a judge; not a jury \u0097 ct said 7th amendment is neutral re: not taking every case to trial bc it's a finding of fact- not a trial \u0085. Parklane made a motion for partial summary judgment", "7th amendment  - court has broad discretion in determining issue preclusion: What are the stakes in the case - similar to the prior case?  could party easily join prior case 2) was the judgment in prior case fair? Were there more procedural opportunities available to the defendant than in case #1 in case #2? Was the judgment inconsistent w/ prior judgments?", "Offensive non mutual collateral estoppel allowed if not prejudicial to the defendant"]},
+        {front: "Ford", back: ["Purposeful availment"]},
+        {front: "WWVW", back: ["Purposeful availment"]},
+        {front: "Helicopteros nacionales de Colombia", back: ["In Colombia, but \u0097 HQ in TX, emp's from TX; Helic. From TX = purp. Avail to TX", "Purp availment can be est'd thru HQ location, training"]},
+        {front: "Buckeye Boiler", back: ["Sold one product in another state; another in CA - the other product got transferred to CA", "Pur[posefully availed bc they had SOME type of business in CA, so it doesn't matter which product caused the har"]},
+        {front: "Bristol Meyers Squibb v Sup Ct of CA", back: ["Plavix - 75% of class action were not prescribed medicine/ingested in CA - case got severed", "Purp. Availment denials can lead to severing cases"]},
+        {front: "Hardy v Mansfield", back: ["Weirdo verdict - claim preclusion - \"wait and see plaintiffs\"", "15, 13a, 13b"]},
+        {front: "Full faith & credit doctrine", back: ["diff state court decisions made have full authority"]},
+        {front: "Long Arm Doctrine", back: ["You can be summoned from out of state if you purposefully  AVAIL yourself in state \u0097 conduct any activities to give you notice of forum of state's JX?", "Due Process: a) purposeful availment? B) arise out of purposeful availment? C) reasonable exercise of JX? Burden on two parties; interest of the state; reasonableness NOT enough"]},
+        {front: "Erie Doctrine", back: ["JX - Issue governed by law governing issue; process governed by fed civil proc. (Fed Ct could be determining state tort damages claims)"]},
+        {front: "Pd of time for each rule", back: []},
+        {front: "4m - process of service after filing complaint", back: ["90 days", "Issue preclusion: same issue? Was it fully/fairly litigated previously? Actually decided? Final judgment? (APPEAL DOESN'T COUNT AS CONTINUING)"]},
+        {front: "11", back: ["Argument for change of law to be given in jury instructions (something new) \u0097 MUST OBJECT to final jury instructions to BRING UP ISSUE on appeal \"preserving the error for appeal\""]},
+        {front: "13", back: ["Claim preclusion - res judicata"]},
+        {front: "15(a)", back: ["21 days after serving plea / 21 days after response w/ motion filed", "Claim preclusion"]},
+        {front: "16(e)", back: ["Determine the things that are in dispute before trial starts"]},
+        {front: "20", back: ["Governs definition of event/transaciton to make claims", "State interests on their JX come into play here"]},
+        {front: "21(a)", back: ["Name all parties and include Does"]},
+        {front: "26(b)1", back: ["Privileges that protect release of discovery: spouse, attorney-client, psychotherapist-patient, 5th amendment applies in criminal cases", "Standards of review"]},
+        {front: "26(b)3", back: ["Lawyers memories not protected in deposition - just documents/tangible things prepared for trial", "De Novo : if issue is about jury instructions OR questions regarding facts (BRIBERY to foreign govt)"]},
+        {front: "26(a)3", back: ["Disclosures on experts", "Judicial discretion : discovery dispute; blatant abuse to prejudice one party; appeal against: finding for motion to dismiss & motion for summary judgment; question regarding application of the law"]},
+        {front: "26a2A; 26b2B; 26a2C; 26e; 45", back: ["Rules on experts"]},
+        {front: "26b4D", back: ["Limited sharing of expert evidence only among showing of exceptional circs NON TESTIFYING EXPS"]},
+        {front: "37(c)1", back: ["Can dismiss evidence if not included in pre-trial discovery (r26)"]},
+        {front: "30(b)4", back: ["Deposition by remote means"]},
+        {front: "30(b)6", back: ["Can be specific in requests for deposition - can send docs and say \"send someone who can speak to us about this\""]},
+        {front: "34", back: ["Discovery requests; often has proportionality objections - can request things not admissible as evidence to help with depositions"]},
+        {front: "34(b)", back: ["Discovery burden obj."]},
+        {front: "34(c)", back: ["prop. Objections"]},
+        {front: "35", back: ["Physical/mental exam - only if those are in dispute for the case"]},
+        {front: "37", back: ["Enforcing rules of discovery; sanctions; can lead to summary judgment in severe cases"]},
+        {front: "37(b)", back: ["sanactions"]},
+        {front: "37(c)", back: ["Default judgment"]},
+        {front: "40(b)", back: ["Claim preclusion doesn't apply; just need to file somewhere else"]},
+        {front: "50(a)", back: ["Can renew motion", "7th amendment not absolute; ct must consider all the evidence (Lavender v Kern = success; Galloway = failure)", "Mot for new trial"]},
+        {front: "51(b) + 51(c)B", back: ["Jury inst's = released to both sides; can object if not informed of instruction", "Triggers De Novo review if error preserved via objection"]},
+        {front: "50(b)", back: ["Can only make after-verdict motion if you made a motion before the jury verdict", "Mot for new trial"]},
+        {front: "56(a)", back: ["Judge doesn't need to grant requests for more time (56(d))"]},
+        {front: "56(d)", back: ["Evidence: it's enough; here's more; give us more time"]},
+        {front: "60(b)", back: ["Can request to set aside judgment if ct has no JX"]},
+        {front: "61", back: ["Harmless error - doesn't matter there was a mistake in lower court; wouldn't have changed the outcome"]},
+        {front: "R404", back: ["No propensity evidence allowed (someone's propensity to do something)"]},
+        {front: "R1332/1333", back: ["Det's citizenship = domicile + intent to remain  | GC Holders = can domicile"]},
+        {front: "1292a1; 1292a2 (post verdict relief)", back: ["Orders granting injunction ; interlocutory review (post verdict)"]},
+        {front: "1292b (post verdict relief)", back: ["Immediate appeal of interlocutory order if judge certifies it's a \"controlling question of law\""]},
+        {front: "R606(b) - jury impeaching verdict", back: ["Meant to protect juries  from blackmail, threats, bribes", "Prej. Info brought; outside influence improperly brought; mistake made while entering the verdict"]},
+        {front: "Additur / Remittur", back: ["Additur = is allowed; Remittur = not allowed"]},
+        {front: "Constitutional Amendments", back: []},
+        {front: "1", back: ["Free speech - PJX for Free Speech issues, used to get it into federal ct"]},
+        {front: "4", back: ["Search and Seizures; used to raise issues due to unlawful use of force by police"]},
+        {front: "5", back: ["Due process, right to not self-incriminate = can use to challenge personal JX through burden"]},
+        {front: "6", back: ["Crim Pro right to jury trial - shouldn't be used for Civ Pro EXCEPT for Habeas Petitions (which are technically civ pro claims)"]},
+        {front: "7", back: ["Right to jury in actions at law (damages), not equity (injunctions, restitution, backpay, demand to perform an act)  ? drives Rule 38/50/56 issues."]},
+        {front: "14", back: ["Due process for JX -> purposeful availment, minimal contact ; Est Federal Subj Matter JX"]}
+    ];
+const torts = [
+        {front: "Ingersoll v. Liberty Bank of Buffalo", back: ["defective step, carrying box - slipped and fell\u0085 died a few months later.", "if there are multiple possible causes, and they are all just as likely, the plaintiff can recover nothing because they failed to prove the defendant caused the harm.\u00a0Need to prove \"more likely than not\"", "Failure of proof in causation"]},
+        {front: "Fordham v Governor Village", back: ["Bridge crossing - holes - planks of different sizes to cover holes", "plaintiff can show facts/conditions of defendant\u0092s negligence and the cause of injuries and negligence can be inferred", "Res ipsa / inference"]},
+        {front: "Scharff", back: ["Cement bags stacked - two possibilities: bad stacking OR bad flooring = bags falling and causing harm", "If two equally possible causes present, and one is not the defendant's doing, then the plaintiff can recover nothing because they did not prove negligence", "Plaintiff fails if multiple causes that are equally possible (and not all by defendant)"]},
+        {front: "Stubbs v City of Rochester", back: ["Typhoid; employed near contamination zone", "not all causes need to be eliminated, just evidence of defendant\u0092s negligence", "Reasonable inference, don't need to eliminate all possible causes"]},
+        {front: "Palsgraf v Long Isand Railroad", back: ["Railroad; dynamite; random tower fell on woman", "Negligence can be est'd through proximate cause and to an unforeseeable plaintiff", "Proximate Cause; unforeseeable plaintiff"]},
+        {front: "Robinson v Lindsay", back: ["Kid, snowmobile, victim lost use of thumb", "Children engaged in adult activities (or inherently dangerous) will be held to the adult standard of care ////// motorized vehicles like snowmobiles or boats are inherently dangerous", "Children doing inherently dangerous things = adult standard of care"]},
+        {front: "US v Carroll towing", back: ["Learned Hand formula :  B (burden) > Magnitude (severity of harm) * Probability (probability it will happen in all instances if no precautions taken)", "Learned Hand"]},
+        {front: "McCarty v Pheasant Run Inc", back: ["Hotel, weird entrance to side of room, not locked - random dude inside - scared guest", "Hotel was not negligent; guest not locking sliding door was superseding cause - no evidence that further taken precautions would have prevented the harm", "Superseding cause"]},
+        {front: "Substantial factor", back: []},
+        {front: "Corey v Havener", back: ["Two motorcycles next to horses, horse got spooked and injured", "Substantial Contributing Factor"]},
+        {front: "Doull v Foster", back: ["Med Malpr. - progesterone blood shots", "CA: \"but-for\" is not a good measure; prefer substantial factor"]},
+        {front: "Zuchowicz v US", back: ["medicine at wrong dose - 2x the safe amt., got pulmonary hypertension", "Post hoc ergo Procter hoc (after the thing therefore because of the thing) ; If a defendant\u0092s negligence creates a dangerous situation, then causation can be inferred even without direct proof of how the harm occurred.", "Causation can be est'd if defendant's negligence caused the dangerous situation, even if there isn't direct evidence"]},
+        {front: "Williams v Utica College", back: ["Two women assaulted; previous cases of assault on campus", "If harm is foreseeable but cause is not proven, there is no case for negligence", "Foreseeability ? negligence; duty (fs harm/fs plaintiff) + breach + causation = negligence"]},
+        {front: "Williams v Utica College", back: ["Two women assaulted; previous cases of assault on campus", "Landowner's protection against criminal activity of third parties has test of foreseeability, but still need causation to prove negligence", "Foreseeability of harm from 3rd parties ? negligence; need to prove  causation"]},
+        {front: "Custom", back: []},
+        {front: "Hagerman Constriction Inc v Copeland", back: ["hole in the ground; experts called in to say it's custom to cover it up", "Custom for industry-specific practices is persuasive evidence", "Custom for specific industry"]},
+        {front: "Trimarco v Klein", back: ["Shower; nontempered glass", "Custom is not determinitive, just provides evidence of what a reasonable person would do", "Custom for RP"]},
+        {front: "Joint & Severable Liability", back: []},
+        {front: "Summers v Tice", back: ["Quail hunting; two guys shot at a third", "If it's impossible to tell who did it, both are liable", "Joint & Severable liability"]},
+        {front: "Ybarra v Spangards", back: ["Surgery, shoulder injury, broadening of res ipsa loquitor tests", "Body can be the instrument of harm itself; touches on rules of agency (Dr in charge is liable for whoever did it) and joint & Severable liability", "Joint & Severable liability"]},
+        {front: "Medical negligence", back: []},
+        {front: "Ybarra v Spangards", back: ["Surgery, shoulder injury, broadening of res ipsa loquitor tests", "Res Ipsa Loquitor + body can be instrument of harm"]},
+        {front: "Smith v Finch", back: ["Spotted fever in GA; docs did not consider the disease", "Docs need to consider unlikely causes that have serious consequences", "Foreseeability not as important as standard of medical care"]},
+        {front: "Neg Per Se", back: []},
+        {front: "Bauman v Crawford", back: ["Minor had lack of headlights on bike, collision, broken leg - violated statute", "Neg per se is not determinative but evidence of negligence for a minor \u0097 Would a child of the same: age, education, maturity, and experience make the same choice?", "Neg per se still applies to minors, but only as evidence not determinative of negligence"]},
+        {front: "Constructive Notice", back: []},
+        {front: "Clark v KMart", back: ["Slipped and fell on smashed grapes that had been there many hours. Lane had been closed, footprints other than plaintiff", "Est'd idea of constructive notice: the defendant knew or should have known about the danger and had notice to remove it/prevent harm", "Constructive notice ESP for shopkeepers' floors"]},
+        {front: "Res Ipsa Loquitor", back: []},
+        {front: "Byrne v Boadle", back: ["Flour Barrels", "Res ipsa loquitor"]},
+        {front: "Ybarra v Spangards", back: []},
+        {front: "Diff. types of liability", back: ["General, Joint and Severable, Alternative, Market Share"]},
+        {front: "Hyowitz v Eli Lilly & Co.", back: ["Mothers took pills while pregnant, caused uterine cancer in daughters", "Producer is on the hook for % of nationwide pills they made", "Est'd idea of market share liability"]},
+        {front: "Brenner", back: ["Lead Paint Poisoning", "Market share liability if: measured period of time and fungible product (one product used in one way)", "Market share liability"]},
+        {front: "Thomas", back: ["Disagreed with Brenner - said it was used too many different ways, over too long a period of time", "1) fungible product (was paint used only for interior or exterior?) 2) market control was not exclusive 3) signature injury correlated to use of product was not identified 4) no definite time frame", "Inability to establish market share liability"]},
+        {front: "Neg Per Se", back: []},
+        {front: "Wright v Brown", back: ["Dog bite, quarantine - let out one day early; bit someone again", "1) was there a prima facie breach of statute (PF NPS?) 2) did the harm happen to a person in the class protected by statute? 3) was the type of harm the one the statute meant to prevent 4) legitimate excuse for NPS?", "Neg Per Se"]},
+        {front: "Ferrell v Baxter", back: ["Alaska; driving over the median", "Violation of traffic statute is NPS unless excused", "Neg Per Se"]},
+        {front: "Abnormally Dangerous Act's", back: []},
+        {front: "Klein v Perodyne", back: ["Fireworks", "4 of 5 factors settled; argued about the manufacturer being liable not pyro company \u0097 doesn't matter bc strict liability applies for abn. Dang. Act's", "Strict liability for abnormally dangerous activities"]},
+        {front: "Product Liability", back: []},
+        {front: "Design Defect (problem w/ all products)", back: []},
+        {front: "Greenman v Yuba Power", back: ["Wood-working tool, used as advertised and caused severe harm", "Est'd product liability as strict liability", "Prod defect = strict liability"]},
+        {front: "Leichtamer v Am Motors Corp", back: ["Jeep; roll bar caused second impact injury", "Est'd consumer expectations test: ordinary consumer, ordinary knowledge, ordinary use (as advertised)", "consumer exp's test. 1) ordinary consumer 2) w/ ordinary knowledge 3) ordinary use of product"]},
+        {front: "BIC", back: ["Open & Obvious rule - negligence is not automatic just because a product can cause severe harm", "Open & obvious capacity for harm does not establish design defect liability", "Open & Obvious Capacity for Harm is not grounds for Design Def. Claim"]},
+        {front: "Valk Manuf. v Ramaswamy", back: ["Snow plow case, est'd Wade Factors for Risk-Utility Test \u0097 dove into snowplow hydraulics if mixed JX, use in more science-y cases", "Wade factors 1) usefulness & desirability 2) likelihood of serious injury 3) avail. Of subst. Product w/ less risk 4) ability to make product safe w/ reasonable care 5) ability to avoid danger (user) 6)  awareness of danger (user) 7) feasibility of spreading loss (pricing / liability insurance)", "Design Defect - Risk-Utility: Wade Factors"]},
+        {front: "Vautour v Body Masters Sports Industries", back: ["Injury with leg press machine ; defendant said it was unreasonable to expect a reasonable alternative design bc it didn't exist", "RAD (Reasonable alternative design (not req'd by plaintiff to prove negligence)", "Design Defect - RAD not Req'd but can help prove negligence"]},
+        {front: "Manufacturing defect (problem with one individual item)", back: []},
+        {front: "Escola v Coca Cola", back: ["Bottle of coke exploded in waitresses hand", "All parties in manufacturing chain can be held liable", "Product liability = strict liability for manufacturers, distributors, and vendors"]},
+        {front: "Henningsen v Bloomfield Motors", back: ["Wife drove Buick; wheel spun itself, car drove into wall", "Extended product liability to all foreseeable users", "Liability to not just the purchaser, but all foreseeable users"]},
+        {front: "Wedge v Planters Peanuts", back: ["Roommate used exactoblade to remove sticker on label for rebate; Peanut jar smashed and cut open hand", "Misuse is part of scope of defense, but didn't apply here because the manufacturer was asking consumers to remove the label", "Misuse = can be a defense; except if manufacturer encourages misuse"]},
+        {front: "Warning defect", back: []},
+        {front: "Nowak v Faberge", back: ["Aquanet; insufficient label, similar to prior version - person pierced can near flame, caught fire", "Warning label must be 1) clear 2) prominent 3) understandable; such that a consumer not looking for the warning will be aware of danger \u0097 possibility that consumer would act the same is a defense", "Warning label defect ; defense against warning label defect negligence (defense raised under \"causation\")"]},
+        {front: "False Imprisonment", back: []},
+        {front: "Eilers v Coy", back: ["Religious cult case: plaintiff was suicidal and family thought he was a danger to himself - believed he needed to be deprogrammed", "False imprisonment defense of necessity is only applicable for: reasonable amount of time, reasonable use of force, if defendant(s) sought help from authorities, and if the plaintiff is a danger to themselves or others", "Necessity Defense for False Imprisonment"]},
+        {front: "Battery", back: []},
+        {front: "Hall v McBryde", back: ["Intended assault, made contact (shooting from car)", "Intent to assault can transfer intent to commit battery (and vice versa)", "Transferred intent: Intent to commit assault satisfies intent element of battery"]},
+        {front: "Leichtmann v WLW Jacor Comms", back: ["Cigar smoke; radio station, harmful contact", "Particulate matter can count as battery", "Transferred intent of wanting to assault can satisfy element for battery"]},
+        {front: "Medical malpractice", back: []},
+        {front: "Arc v Volusia Fletcher", back: ["Dev. Disabled Camp \u0097 drowned unsupervised; ambulance was negligent took him too far", "Medical Mal does not break chain of causation (medical malpractice is foreseeable)", "CAUSE: med malpractice doesn't break the chain"]},
+        {front: "Pace v Ohio Dept of Transportation", back: ["Eggshell plaintiff; banged finger - had prior drug abuse issues + diabetes, needed amputation", "Eggshell plaintiff - preexisting conditions are foreseeable under DUTY", "DUTY:  eggshell plaintiff is foreseeable"]},
+        {front: "Sears v Morrison", back: ["Guy ended up with open machine on top of him; someone rescued him but injured herself - she sued him for endangering her", "\"Danger invites rescue\" - defendant put himself in harms' way", "CAUSE: def's own actions triggered the events of them needing to be rescued"]},
+        {front: "Necessity", back: []},
+        {front: "Rossi v Del Duca", back: ["Girl chased by dog", "Can trespass if necessary to avoid harm", "Trespass: Necessity defense"]},
+        {front: "Bradley v Hunter", back: ["Harassed and threatened by man - protected her and her mother by shooting him after warning him", "Allowed defenses for wrongful death: self defense; defense of others", "Self defense, defense of other"]},
+        {front: "Juarez Martinez v Deans", back: ["Landlord/boss attacked worker; worker fought back", "Can't be first aggressor and claim self defense", "Self defense; first aggressor"]},
+        {front: "Katko v Britney", back: []},
+        {front: "Vincent v Lake Erie", back: []},
+        {front: "Hellriegel v Toll", back: []},
+        {front: "Reavis v Slominski", back: []},
+        {front: "Hogan v Tavzel", back: []}
+    ];
+
+// State
+let deck = civpro;
+let originalDeck = [...deck];
+let wrongCards = [];
+let reviewWrongOnly = false;
+let index = 0;
+let showingFront = true;
+let shuffleMode = false;
+let correct = 0;
+let total = 0;
+
+function updateScore() {
+    document.getElementById("scoreDisplay").innerText = `Score: ${correct} correct / ${total} total`;
+}
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+function renderCard() {
+    const card = document.getElementById("card");
+    const current = deck[index];
+    if (!current) {
+        card.innerHTML = "No cards to review.";
+        return;
+    }
+    if (showingFront) {
+        card.innerHTML = current.front;
+    } else {
+        card.innerHTML = "<ul>" + current.back.map(x => `<li>${x}</li>`).join("") + "</ul>";
+    }
+}
+
+// Buttons
+
+document.getElementById("flip").onclick = () => {
+    showingFront = !showingFront;
+    renderCard();
+};
+
+document.getElementById("next").onclick = () => {
+    index = (index + 1) % deck.length;
+    showingFront = true;
+    renderCard();
+};
+
+document.getElementById("prev").onclick = () => {
+    index = (index - 1 + deck.length) % deck.length;
+    showingFront = true;
+    renderCard();
+};
+
+// Deck switch
+
+document.getElementById("deckSelect").onchange = (e) => {
+    deck = e.target.value === "civpro" ? civpro : torts;
+    originalDeck = [...deck];
+    wrongCards = [];
+    reviewWrongOnly = false;
+    document.getElementById("wrongOnlyToggle").innerText = "Review Wrong Only: OFF";
+    index = 0;
+    showingFront = true;
+    if (shuffleMode) shuffle(deck);
+    renderCard();
+};
+
+// Dark mode
+
+document.getElementById("darkToggle").onclick = () => {
+    document.body.classList.toggle("dark");
+};
+
+// Shuffle mode
+
+document.getElementById("shuffleToggle").onclick = () => {
+    shuffleMode = !shuffleMode;
+    if (shuffleMode) {
+        document.getElementById("shuffleToggle").innerText = "Shuffle Mode: ON";
+        shuffle(deck);
+    } else {
+        document.getElementById("shuffleToggle").innerText = "Shuffle Mode: OFF";
+        deck = [...originalDeck];
+    }
+    index = 0;
+    renderCard();
+};
+
+// Wrong only toggle
+
+document.getElementById("wrongOnlyToggle").onclick = () => {
+    reviewWrongOnly = !reviewWrongOnly;
+    if (reviewWrongOnly) {
+        deck = [...wrongCards];
+        document.getElementById("wrongOnlyToggle").innerText = "Review Wrong Only: ON";
+    } else {
+        deck = [...originalDeck];
+        document.getElementById("wrongOnlyToggle").innerText = "Review Wrong Only: OFF";
+    }
+    index = 0;
+    renderCard();
+};
+
+// Scoring
+
+document.getElementById("correctBtn").onclick = () => {
+    correct++; total++; updateScore();
+};
+
+document.getElementById("wrongBtn").onclick = () => {
+    wrongCards.push(deck[index]);
+    total++; updateScore();
+};
+
+// Swipe gestures
+let touchStartX = 0, touchStartY = 0;
+document.addEventListener("touchstart", (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+});
+
+document.addEventListener("touchend", (e) => {
+    let dx = e.changedTouches[0].screenX - touchStartX;
+    let dy = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 40) document.getElementById("prev").click();
+        if (dx < -40) document.getElementById("next").click();
+    } else {
+        if (dy < -40) document.getElementById("flip").click();
+        if (dy > 40) document.getElementById("wrongOnlyToggle").click();
+    }
+});
+
+// Initial render
+renderCard();
+updateScore();
+</script>
+</body>
+</html>
